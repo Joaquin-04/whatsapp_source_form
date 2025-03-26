@@ -51,7 +51,7 @@ class DiscussChannel(models.Model):
                             'language': template.lang_code,
                         })
                         channel.formulario_sent = True
-                        _logger.info("Formulario interactivo enviado en canal %s", channel.id)
+                        _logger.warning("Formulario interactivo enviado en canal %s", channel.id)
                     else:
                         _logger.warning("No se encontró la plantilla 'formulario' en whatsapp.template")
                 else:
@@ -64,5 +64,5 @@ class DiscussChannel(models.Model):
                             'Landing Page': 'landing',
                         }
                         channel.source_option = mapping.get(body_text)
-                        _logger.info("Fuente capturada en canal %s: %s", channel.id, channel.source_option)
+                        _logger.warning("Fuente capturada en canal %s: %s", channel.id, channel.source_option)
         return res
