@@ -38,6 +38,10 @@ class DiscussChannel(models.Model):
                 if body_text == template_text:
                     continue
 
+                
+                #Solo para testear luego comentar
+                channel.formulario_sent= False
+
                 # Enviar formulario si aún no se envió
                 if not channel.formulario_sent:
                     _logger.warning("Formulario no se ha enviado todavía")
