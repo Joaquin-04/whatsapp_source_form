@@ -19,12 +19,6 @@ class DiscussChannel(models.Model):
                                      help="Indica si ya se envió el mensaje interactivo de formulario.")
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
-        """
-        Extiende el método de notificación para los mensajes inbound en canales de WhatsApp.
-        Cuando se recibe un mensaje inbound (identificado por 'whatsapp_inbound_msg_uid') se evalúa:
-          - Si aún no se ha enviado el formulario, se envía la plantilla 'formulario' como mensaje de texto.
-          - Si ya se envió, se verifica si el mensaje entrante coincide con alguna opción permitida y se captura.
-        """
         res = super(DiscussChannel, self)._notify_thread(message, msg_vals=msg_vals, **kwargs)
         
         for channel in self:
@@ -32,36 +26,51 @@ class DiscussChannel(models.Model):
                 allowed_options = ['Google o YouTube', 'Facebook o Instagram', 'Landing Page']
                 body_text = message.body.strip() if message.body else ''
                 
-                _logger.warning(f"allowed_options: {allowed_options} body_text: {body_text} ")
+                _logger.warning(f"allowed_options: {allowed_options} body_text: {body_text}")
                 
                 # Buscar la plantilla 'formulario'
                 template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
                 template_text = template.body.strip() if template else ''
 
-                _logger.warning(f"Template: {template} template_text: {template_text} ")
+                _logger.warning(f"Template: {template} template_text: {template_text}")
                 
                 # Evitamos procesar el mensaje si es el mismo que el de formulario
                 if body_text == template_text:
                     continue
 
+                # Enviar formulario si aún no se envió
                 if not channel.formulario_sent:
-                    _logger.warning(f"Si el formulario no se mando")
-                    # Enviar el mensaje interactivo usando la plantilla
+                    _logger.warning("Formulario no se ha enviado todavía")
                     if template and channel.wa_account_id and channel.whatsapp_number:
-                        
                         try:
-                            wa_api = WhatsAppApi(channel.wa_account_id)
-                            send_vals = {
-                                'preview_url': True,
-                                'body': template.body,
-                            }
-                            msg_uid = wa_api._send_whatsapp(
-                                number=channel.whatsapp_number,
-                                message_type='text',  # Enviamos como texto con el contenido de la plantilla
-                                send_vals=send_vals
+                            # 1) Crear el mail.message para que aparezca en el chat de Odoo
+                            mail_msg = channel.message_post(
+                                body=template.body,              # se usa el body de la plantilla
+                                message_type='whatsapp_message',  # para indicar que es de WhatsApp
+                                subtype_xmlid='mail.mt_comment',
+                                author_id=self.env.user.partner_id.id,
                             )
+
+                            # 2) Crear el registro whatsapp.message usando la plantilla completa
+                            whatsapp_msg_vals = {
+                                'mobile_number': channel.whatsapp_number,
+                                'mail_message_id': mail_msg.id,
+                                'wa_account_id': channel.wa_account_id.id,
+                                'message_type': 'outbound',
+                                'state': 'outgoing',
+                                'wa_template_id': template.id,  # Esto indica que se enviará como template
+                                # Si tu plantilla necesita variables, puedes asignarlas en free_text_json:
+                                # 'free_text_json': {'variable1': 'valor1', ...},
+                            }
+                            whatsapp_msg = self.env['whatsapp.message'].create(whatsapp_msg_vals)
+
+                            # 3) Forzar el envío (o dejar que el cron lo procese)
+                            whatsapp_msg._send()
+
+                            # Marcar el canal para no volver a enviar el formulario
                             channel.formulario_sent = True
-                            _logger.warning("Formulario interactivo enviado en canal %s, msg_uid: %s", channel.id, msg_uid)
+                            _logger.warning("Formulario interactivo (template) enviado en canal %s, whatsapp_msg_id: %s", channel.id, whatsapp_msg.id)
+
                         except Exception as e:
                             _logger.exception("Error enviando formulario interactivo en canal %s: %s", channel.id, e)
                     else:
@@ -77,5 +86,3 @@ class DiscussChannel(models.Model):
                         channel.source_option = mapping.get(body_text)
                         _logger.warning("Fuente capturada en canal %s: %s", channel.id, channel.source_option)
         return res
-
-
