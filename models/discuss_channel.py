@@ -57,6 +57,22 @@ class DiscussChannel(models.Model):
                     _logger.warning("Formulario no se ha enviado todavía")
                     if template and channel.wa_account_id and channel.whatsapp_number:
                         try:
+                            whatsapp_msg_vals = {
+                                'mobile_number': channel.whatsapp_number,
+                                'wa_account_id': channel.wa_account_id.id,
+                                'message_type': 'template',
+                                'state': 'outgoing',
+                                'wa_template_id': template.id,
+                                'template_name': template.template_name,  # Asegura que se envía el nombre del template
+                                'language': 'es',  # Ajusta según el idioma de la plantilla
+                                'template_components': template.template_components,  # Incluye botones y encabezado
+                            }
+                            whatsapp_msg = self.env['whatsapp.message'].create(whatsapp_msg_vals)
+                            whatsapp_msg._send()
+
+                            channel.formulario_sent = True
+                            _logger.warning(f"Formulario interactivo (template) enviado en canal {channel.id}, whatsapp_msg_id: {whatsapp_msg.id}")
+                            """
                             mail_msg = channel.message_post(
                                 body=template.body,
                                 message_type='whatsapp_message',
@@ -71,8 +87,10 @@ class DiscussChannel(models.Model):
                                 'state': 'outgoing',
                                 'wa_template_id': template.id,
                             }
+                            
                             whatsapp_msg = self.env['whatsapp.message'].create(whatsapp_msg_vals)
                             whatsapp_msg._send()
+                            """
 
                             channel.formulario_sent = True
                             _logger.warning("Formulario interactivo (template) enviado en canal %s, whatsapp_msg_id: %s", channel.id, whatsapp_msg.id)
