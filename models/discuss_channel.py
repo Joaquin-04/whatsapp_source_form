@@ -19,7 +19,19 @@ class DiscussChannel(models.Model):
                                      help="Indica si ya se envió el mensaje interactivo de formulario.")
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
+        _logger.warning(f"***************************************************************************** _notify_thread *****************************************************************************+")
         res = super(DiscussChannel, self)._notify_thread(message, msg_vals=msg_vals, **kwargs)
+
+        _logger.warning(f"Valores de la variable msg_vals: {msg_vals}")
+        # Supongamos que la info del botón llega en msg_vals['interactive']
+        if msg_vals and 'interactive' in msg_vals:
+            button_reply = msg_vals['interactive'].get('button_reply')
+            if button_reply:
+                user_selection = button_reply.get('title')  # "Google o YouTube"
+                # ya tienes la opción seleccionada
+                if user_selection in ['Google o YouTube', 'Facebook o Instagram', 'Landing Page']:
+                    ...
+        return res
         
         for channel in self:
             if channel.channel_type == 'whatsapp' and kwargs.get('whatsapp_inbound_msg_uid'):
