@@ -111,7 +111,7 @@ class DiscussChannel(models.Model):
                                     'components': [
                                         {
                                             'type': 'header',
-                                            'parameters': [{'type': 'text', 'text': template.header_text}] if template.header else []
+                                            'parameters': [{'type': 'text', 'text': template.header_text}] if template.header_text else []
                                         },
                                         {
                                             'type': 'body',
