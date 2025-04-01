@@ -57,6 +57,14 @@ class DiscussChannel(models.Model):
                     _logger.warning("Formulario no se ha enviado todavía")
                     if template and channel.wa_account_id and channel.whatsapp_number:
                         try:
+                            # 1) Crear el mail.message para que aparezca en el chat de Odoo
+                            mail_msg = channel.message_post(
+                                body=template.body,
+                                message_type='whatsapp_message',
+                                subtype_xmlid='mail.mt_comment',
+                                author_id=self.env.user.partner_id.id,
+                            )
+                            # 2) Crear el registro whatsapp.message usando el mail.message
                             whatsapp_msg_vals = {
                                 'mobile_number': channel.whatsapp_number,
                                 'wa_account_id': channel.wa_account_id.id,
