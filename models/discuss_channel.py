@@ -60,7 +60,7 @@ class DiscussChannel(models.Model):
                             whatsapp_msg_vals = {
                                 'mobile_number': channel.whatsapp_number,
                                 'wa_account_id': channel.wa_account_id.id,
-                                'message_type': 'template',
+                                'message_type': 'outbound',
                                 'state': 'outgoing',
                                 'wa_template_id': template.id,
                             }
