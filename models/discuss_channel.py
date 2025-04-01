@@ -43,7 +43,7 @@ class DiscussChannel(models.Model):
                 # Buscar la plantilla 'formulario'
                 template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
                 template_text = template.body.strip() if template else ''
-                _logger.warning(f"Encabezado: {getattr(template, 'header', 'No definido')}")
+                _logger.warning(f"Encabezado: {getattr(template, 'header_text', 'No definido')}")
                 _logger.warning(f"Cuerpo: {getattr(template, 'body', 'No definido')}")
                 _logger.warning(f"Pie de página: {getattr(template, 'footer', 'No definido')}")
                 _logger.warning(f"Botones: {getattr(template, 'button_ids', 'No definido')}")
@@ -111,7 +111,7 @@ class DiscussChannel(models.Model):
                                     'components': [
                                         {
                                             'type': 'header',
-                                            'parameters': [{'type': 'text', 'text': template.header}] if template.header else []
+                                            'parameters': [{'type': 'text', 'text': template.header_text}] if template.header else []
                                         },
                                         {
                                             'type': 'body',
