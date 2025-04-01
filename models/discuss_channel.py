@@ -63,7 +63,6 @@ class DiscussChannel(models.Model):
                                 'message_type': 'template',
                                 'state': 'outgoing',
                                 'wa_template_id': template.id,
-                                'template_name': template.template_name,  # Asegura que se envía el nombre del template
                                 'language': 'es',  # Ajusta según el idioma de la plantilla
                             }
                             whatsapp_msg = self.env['whatsapp.message'].create(whatsapp_msg_vals)
