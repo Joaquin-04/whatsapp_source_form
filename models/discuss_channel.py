@@ -43,7 +43,12 @@ class DiscussChannel(models.Model):
                 # Buscar la plantilla 'formulario'
                 template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
                 template_text = template.body.strip() if template else ''
-                _logger.warning(f"Template: {template} template_text: {template_text}")
+                _logger.warning(f"Template encontrado: {template}")
+                _logger.warning(f"Encabezado: {template.header}")
+                _logger.warning(f"Cuerpo: {template.body}")
+                _logger.warning(f"Pie de página: {template.footer}")
+                _logger.warning(f"Botones: {template.button_ids}")
+
                 
                 # Evitamos procesar el mensaje si es el mismo que el de formulario
                 if body_text == template_text:
@@ -56,6 +61,7 @@ class DiscussChannel(models.Model):
                 if not channel.formulario_sent:
                     _logger.warning("Formulario no se ha enviado todavía")
                     if template and channel.wa_account_id and channel.whatsapp_number:
+                        """
                         try:
                             # 1) Crear el mail.message para que aparezca en el chat de Odoo
                             mail_msg = channel.message_post(
@@ -77,28 +83,48 @@ class DiscussChannel(models.Model):
 
                             channel.formulario_sent = True
                             _logger.warning(f"Formulario interactivo (template) enviado en canal {channel.id}, whatsapp_msg_id: {whatsapp_msg.id}")
-                            """
-                            mail_msg = channel.message_post(
-                                body=template.body,
-                                message_type='whatsapp_message',
-                                subtype_xmlid='mail.mt_comment',
-                                author_id=self.env.user.partner_id.id,
-                            )
-                            whatsapp_msg_vals = {
-                                'mobile_number': channel.whatsapp_number,
-                                'mail_message_id': mail_msg.id,
-                                'wa_account_id': channel.wa_account_id.id,
-                                'message_type': 'outbound',
-                                'state': 'outgoing',
-                                'wa_template_id': template.id,
-                            }
                             
-                            whatsapp_msg = self.env['whatsapp.message'].create(whatsapp_msg_vals)
-                            whatsapp_msg._send()
-                            """
 
                             channel.formulario_sent = True
                             _logger.warning("Formulario interactivo (template) enviado en canal %s, whatsapp_msg_id: %s", channel.id, whatsapp_msg.id)
+
+                        """
+                        try:
+                            whatsapp_api = WhatsAppApi(channel.wa_account_id)
+
+                            # Construir lista de botones si existen
+                            button_parameters = []
+                            if template.button_ids:
+                                for button in template.button_ids:
+                                    button_parameters.append({
+                                        'type': 'button',
+                                        'sub_type': 'quick_reply',
+                                        'index': len(button_parameters),
+                                        'parameters': [{'type': 'text', 'text': button.name}]
+                                    })
+
+                            message_data = {
+                                'to': channel.whatsapp_number,
+                                'template': {
+                                    'name': template.template_name,
+                                    'language': {'code': 'es'},
+                                    'components': [
+                                        {
+                                            'type': 'header',
+                                            'parameters': [{'type': 'text', 'text': template.header}] if template.header else []
+                                        },
+                                        {
+                                            'type': 'body',
+                                            'parameters': [{'type': 'text', 'text': template.body}]
+                                        }
+                                    ] + button_parameters  # Agregar botones solo si existen
+                                }
+                            }
+
+                            response = whatsapp_api.send_template(message_data)
+                            _logger.warning(f"Respuesta de WhatsApp API: {response}")
+
+                            channel.formulario_sent = True
                         except Exception as e:
                             _logger.exception("Error enviando formulario interactivo en canal %s: %s", channel.id, e)
                     else:
