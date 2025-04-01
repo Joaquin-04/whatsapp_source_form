@@ -43,11 +43,11 @@ class DiscussChannel(models.Model):
                 # Buscar la plantilla 'formulario'
                 template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
                 template_text = template.body.strip() if template else ''
-                _logger.warning(f"Template encontrado: {template}")
-                _logger.warning(f"Encabezado: {template.header}")
-                _logger.warning(f"Cuerpo: {template.body}")
-                _logger.warning(f"Pie de página: {template.footer}")
-                _logger.warning(f"Botones: {template.button_ids}")
+                _logger.warning(f"Encabezado: {getattr(template, 'header', 'No definido')}")
+                _logger.warning(f"Cuerpo: {getattr(template, 'body', 'No definido')}")
+                _logger.warning(f"Pie de página: {getattr(template, 'footer', 'No definido')}")
+                _logger.warning(f"Botones: {getattr(template, 'button_ids', 'No definido')}")
+
 
                 
                 # Evitamos procesar el mensaje si es el mismo que el de formulario
