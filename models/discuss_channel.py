@@ -44,14 +44,32 @@ class DiscussChannel(models.Model):
         _logger.warning(f"self.wa_account_id.id: {self.wa_account_id.id}")
         _logger.warning(f"template.id: {template.id}")
 
-        whatsapp_msg = self.env['whatsapp.message'].create({
-            'mobile_number': self.whatsapp_number,
-            'wa_template_id': template.id,
-            'wa_account_id': self.wa_account_id.id,
-        })
-        _logger.warning(f"Enviando la plantilla por mensaje")
-        whatsapp_msg._send()
+        try:
+            # Crear mail.message primero para vincular
+            mail_message = self.env['mail.message'].create({
+                'model': 'discuss.channel',
+                'res_id': self.id,
+                'body': 'Enviando plantilla formulario',
+            })
 
+            # Crear whatsapp.message con todos los campos requeridos
+            whatsapp_msg = self.env['whatsapp.message'].create({
+                'mobile_number': self.whatsapp_number,
+                'wa_template_id': template.id,
+                'wa_account_id': self.wa_account_id.id,
+                'message_type': 'template',  # Obligatorio para plantillas
+                'free_text_json': {},  # JSON vacío si no hay variables
+                'mail_message_id': mail_message.id,  # Vincular a mail.message
+            })
+            _logger.warning("WhatsApp message creado: %s", whatsapp_msg.id)
+            
+            whatsapp_msg._send()
+            _logger.warning("Plantilla enviada correctamente")
+        except Exception as e:
+            _logger.error("Error al enviar plantilla: %s", str(e))
+            raise
+
+        
     def _process_button_response(self, button_title):
         """Mapea la respuesta del botón al campo source_option."""
         mapping = {
