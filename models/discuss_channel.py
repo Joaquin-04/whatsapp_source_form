@@ -18,6 +18,11 @@ class DiscussChannel(models.Model):
     def _notify_thread(self, message, msg_vals=False, **kwargs):
         res = super(DiscussChannel, self)._notify_thread(message, msg_vals=msg_vals, **kwargs)
         # Procesar mensaje entrante de WhatsApp
+
+        # Solo pa testear
+        self.formulario_sent = False
+
+
         if self.channel_type == 'whatsapp' and not self.formulario_sent:
             template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
             if template:
@@ -40,6 +45,7 @@ class DiscussChannel(models.Model):
             'wa_template_id': template.id,
             'wa_account_id': self.wa_account_id.id,
         })
+        _logger.warning(f"Enviando la plantilla por mensaje")
         whatsapp_msg._send()
 
     def _process_button_response(self, button_title):
