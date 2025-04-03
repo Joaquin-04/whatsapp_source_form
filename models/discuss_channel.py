@@ -40,6 +40,10 @@ class DiscussChannel(models.Model):
 
     def _send_whatsapp_template(self, template):
         """Envía la plantilla de WhatsApp y vincula al canal."""
+        _logger.warning(f"whatsapp_number: {self.whatsapp_number}")
+        _logger.warning(f"self.wa_account_id.id: {self.wa_account_id.id}")
+        _logger.warning(f"template.id: {template.id}")
+
         whatsapp_msg = self.env['whatsapp.message'].create({
             'mobile_number': self.whatsapp_number,
             'wa_template_id': template.id,
