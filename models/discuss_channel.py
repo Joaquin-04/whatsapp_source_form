@@ -45,26 +45,21 @@ class DiscussChannel(models.Model):
         _logger.warning(f"template.id: {template.id}")
 
         try:
-            # Crear mail.message primero para vincular
             mail_message = self.env['mail.message'].create({
                 'model': 'discuss.channel',
                 'res_id': self.id,
                 'body': 'Enviando plantilla formulario',
             })
 
-            # Crear whatsapp.message con todos los campos requeridos
             whatsapp_msg = self.env['whatsapp.message'].create({
                 'mobile_number': self.whatsapp_number,
-                'wa_template_id': template.id,
+                'wa_template_id': template.id,  # <--- Vincula la plantilla aquí
                 'wa_account_id': self.wa_account_id.id,
-                'message_type': 'template',  # Obligatorio para plantillas
-                'free_text_json': {},  # JSON vacío si no hay variables
-                'mail_message_id': mail_message.id,  # Vincular a mail.message
+                'message_type': 'outbound',  # <--- Valor correcto
+                'mail_message_id': mail_message.id,
             })
-            _logger.warning("WhatsApp message creado: %s", whatsapp_msg.id)
-            
             whatsapp_msg._send()
-            _logger.warning("Plantilla enviada correctamente")
+            _logger.warning("¡Plantilla enviada correctamente!")
         except Exception as e:
             _logger.error("Error al enviar plantilla: %s", str(e))
             raise
