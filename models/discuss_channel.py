@@ -36,53 +36,90 @@ class DiscussChannel(models.Model):
         return res
 
     def _send_whatsapp_template(self):
-        """Envía un mensaje interactivo con botones de respuesta rápida."""
-        _logger.warning("Preparando mensaje interactivo con botones...")
-        
         try:
-            # Crear el cuerpo del mensaje
-            body = "Para brindarte una mejor atención, ¿nos contás dónde viste nuestro anuncio?"
+            # Definimos los botones
             buttons = [
-                {"type": "reply", "reply": {"id": "google", "title": "Google o YouTube"}},
-                {"type": "reply", "reply": {"id": "social", "title": "Facebook o Instagram"}},
-                {"type": "reply", "reply": {"id": "landing", "title": "Landing Page"}},
+                {'title': 'Google o YouTube', 'payload': 'google'},
+                {'title': 'Facebook o Instagram', 'payload': 'social'}, 
+                {'title': 'Landing Page', 'payload': 'landing'}
             ]
-
-            # Crear mail.message para vincular
+            
+            # Creamos el mensaje base
             mail_message = self.env['mail.message'].create({
                 'model': 'discuss.channel',
                 'res_id': self.id,
-                'body': body,
+                'body': 'Enviando mensaje interactivo',
             })
 
-            # Crear mensaje de WhatsApp con botones
+            # Preparamos el payload para WhatsApp
+            whatsapp_payload = self._prepare_interactive_message(
+                body="Para brindarte mejor atención, ¿dónde nos encontraste?",
+                buttons=buttons
+            )
+
+            # Creamos y enviamos el mensaje
             whatsapp_msg = self.env['whatsapp.message'].create({
-                'mobile_number': f"+{self.whatsapp_number}",  # Formato E.164
+                'mobile_number': f"+{self.whatsapp_number}",
                 'wa_account_id': self.wa_account_id.id,
                 'message_type': 'outbound',
-                'body': body,
                 'mail_message_id': mail_message.id,
-                'button_ids': [(0, 0, {
-                    'button_type': 'quick_reply',
-                    'name': button['reply']['title'],
-                    'payload': button['reply']['id'],
-                }) for button in buttons]
+                'body': whatsapp_payload['interactive']['body']['text']
             })
             
-            # Enviar el mensaje
-            whatsapp_msg._send()
-            _logger.warning("¡Mensaje interactivo enviado correctamente!")
+            # Enviamos directamente a través de la API
+            wa_api = WhatsAppApi(self.wa_account_id)
+            msg_uid = wa_api._send_whatsapp(
+                number=f"+{self.whatsapp_number}",
+                message_type='interactive',
+                send_vals=whatsapp_payload
+            )
+            
+            # Actualizamos el mensaje con el UID recibido
+            if msg_uid:
+                whatsapp_msg.write({
+                    'state': 'sent',
+                    'msg_uid': msg_uid
+                })
 
         except Exception as e:
-            _logger.error(f"Error al enviar mensaje: {str(e)}")
-            raise
-        
+            _logger.error(f"Error enviando mensaje interactivo: {str(e)}")
+            raise    
     
     def _process_button_response(self, button_id):
-        """Mapea el ID del botón al campo source_option."""
+        """Mapea la respuesta del botón al campo source_option."""
         mapping = {
             'google': 'google',
             'social': 'social',
             'landing': 'landing',
         }
         self.source_option = mapping.get(button_id)
+
+
+    def _prepare_interactive_message(self, body, buttons):
+        """
+        Prepara el payload para un mensaje interactivo con botones de respuesta rápida
+        :param body: Texto del mensaje
+        :param buttons: Lista de diccionarios con 'title' y 'payload'
+        :return: Diccionario con la estructura esperada por WhatsApp API
+        """
+        return {
+            'type': 'interactive',
+            'interactive': {
+                'type': 'button',
+                'body': {'text': body},
+                'action': {
+                    'buttons': [{
+                        'type': 'reply',
+                        'reply': {
+                            'id': btn['payload'],
+                            'title': btn['title']
+                        }
+                    } for btn in buttons]
+                }
+            }
+        }
+    
+
+
+
+    
