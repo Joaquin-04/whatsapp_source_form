@@ -16,60 +16,73 @@ class DiscussChannel(models.Model):
     formulario_sent = fields.Boolean(string="Formulario Enviado", default=False)
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
-        res = super(DiscussChannel, self)._notify_thread(message, msg_vals=msg_vals, **kwargs)
-        # Procesar mensaje entrante de WhatsApp
-
-        # Solo pa testear
+        res = super()._notify_thread(message, msg_vals, **kwargs)
+        # Solo para testing
         self.formulario_sent = False
 
-
         if self.channel_type == 'whatsapp' and not self.formulario_sent:
-            template = self.env['whatsapp.template'].search([('template_name', '=', 'formulario')], limit=1)
-            if template:
-                try:
-                    self._send_whatsapp_template(template)
-                    self.formulario_sent = True
-                except Exception as e:
-                    _logger.error(f"Error enviando plantilla: {str(e)}")
-        # Capturar respuesta del botón
+            try:
+                self._send_whatsapp_template()
+                self.formulario_sent = True
+            except Exception as e:
+                _logger.error(f"Error: {str(e)}")
+
+        # Capturar respuesta del botón por ID
         if msg_vals and 'interactive' in msg_vals:
             button_reply = msg_vals['interactive'].get('button_reply')
             if button_reply:
-                self._process_button_response(button_reply.get('title'))
+                self._process_button_response(button_reply.get('id'))  # <--- Usar 'id' en lugar de 'title'
+
         return res
 
     def _send_whatsapp_template(self, template):
-        """Envía la plantilla de WhatsApp y vincula al canal."""
-        _logger.warning(f"whatsapp_number: {self.whatsapp_number}")
-        _logger.warning(f"self.wa_account_id.id: {self.wa_account_id.id}")
-        _logger.warning(f"template.id: {template.id}")
-
+        """Envía un mensaje interactivo con botones de respuesta rápida."""
+        _logger.warning("Preparando mensaje interactivo con botones...")
+        
         try:
+            # Crear el cuerpo del mensaje
+            body = "Para brindarte una mejor atención, ¿nos contás dónde viste nuestro anuncio?"
+            buttons = [
+                {"type": "reply", "reply": {"id": "google", "title": "Google o YouTube"}},
+                {"type": "reply", "reply": {"id": "social", "title": "Facebook o Instagram"}},
+                {"type": "reply", "reply": {"id": "landing", "title": "Landing Page"}},
+            ]
+
+            # Crear mail.message para vincular
             mail_message = self.env['mail.message'].create({
                 'model': 'discuss.channel',
                 'res_id': self.id,
-                'body': 'Enviando plantilla formulario',
+                'body': body,
             })
 
+            # Crear mensaje de WhatsApp con botones
             whatsapp_msg = self.env['whatsapp.message'].create({
-                'mobile_number': self.whatsapp_number,
-                'wa_template_id': template.id,  # <--- Vincula la plantilla aquí
+                'mobile_number': f"+{self.whatsapp_number}",  # Formato E.164
                 'wa_account_id': self.wa_account_id.id,
-                'message_type': 'outbound',  # <--- Valor correcto
+                'message_type': 'outbound',
+                'body': body,
                 'mail_message_id': mail_message.id,
+                'button_ids': [(0, 0, {
+                    'button_type': 'quick_reply',
+                    'name': button['reply']['title'],
+                    'payload': button['reply']['id'],
+                }) for button in buttons]
             })
+            
+            # Enviar el mensaje
             whatsapp_msg._send()
-            _logger.warning("¡Plantilla enviada correctamente!")
-        except Exception as e:
-            _logger.error("Error al enviar plantilla: %s", str(e))
-            raise
+            _logger.warning("¡Mensaje interactivo enviado correctamente!")
 
+        except Exception as e:
+            _logger.error(f"Error al enviar mensaje: {str(e)}")
+            raise
         
-    def _process_button_response(self, button_title):
-        """Mapea la respuesta del botón al campo source_option."""
+    
+    def _process_button_response(self, button_id):
+        """Mapea el ID del botón al campo source_option."""
         mapping = {
-            'Google o YouTube': 'google',
-            'Facebook o Instagram': 'social',
-            'Landing Page': 'landing',
+            'google': 'google',
+            'social': 'social',
+            'landing': 'landing',
         }
-        self.source_option = mapping.get(button_title)
+        self.source_option = mapping.get(button_id)
