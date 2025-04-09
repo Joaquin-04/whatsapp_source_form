@@ -41,10 +41,11 @@ class DiscussChannel(models.Model):
         _logger.warning("Iniciando _send_whatsapp_template.")
         try:
             buttons = [
-                {'title': 'Google o YouTube', 'payload': 'google'},
-                {'title': 'Facebook o Instagram', 'payload': 'social'},
-                {'title': 'Landing Page', 'payload': 'landing'}
+                {'title': 'Google', 'payload': 'google'},
+                {'title': 'Facebook/IG', 'payload': 'social'},
+                {'title': 'Landing', 'payload': 'landing'}
             ]
+
             _logger.warning(f"Botones definidos: {buttons}")
 
             mail_message = self.env['mail.message'].create({
