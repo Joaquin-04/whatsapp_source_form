@@ -35,7 +35,7 @@ class DiscussChannel(models.Model):
 
         return res
 
-    def _send_whatsapp_template(self, template):
+    def _send_whatsapp_template(self):
         """Envía un mensaje interactivo con botones de respuesta rápida."""
         _logger.warning("Preparando mensaje interactivo con botones...")
         
