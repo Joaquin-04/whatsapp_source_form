@@ -48,7 +48,7 @@ class DiscussChannel(models.Model):
             mail_message = self.env['mail.message'].create({
                 'model': 'discuss.channel',
                 'res_id': self.id,
-                'body': 'Enviando mensaje interactivo',
+                'body': 'Enviando mensaje interactivo Formulario',
             })
 
             # Preparamos el payload para WhatsApp
