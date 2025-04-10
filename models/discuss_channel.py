@@ -40,11 +40,18 @@ class DiscussChannel(models.Model):
     def _send_whatsapp_template(self):
         _logger.warning("Iniciando _send_whatsapp_template.")
         try:
+            """
             buttons = [
                 {'title': 'Google', 'payload': 'google'},
-                {'title': 'Facebook/IG', 'payload': 'social'},
+                {'title': 'Facebook', 'payload': 'social'},
                 {'title': 'Landing', 'payload': 'landing'}
             ]
+            """
+
+            buttons = [
+                {'title': 'Google', 'payload': 'google'},
+            ]
+
 
             _logger.warning(f"Botones definidos: {buttons}")
 
