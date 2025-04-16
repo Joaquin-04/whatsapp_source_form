@@ -124,7 +124,7 @@ class DiscussChannel(models.Model):
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
-            "to": self.whatsapp_number,  # Asegurate de que el número esté en formato E.164, ej: '+5493874880449'
+            "to": f"+{self.whatsapp_number}",  # Asegurate de que el número esté en formato E.164, ej: '+5493874880449'
             "type": "interactive",
             "interactive": {
                 "type": "button",
