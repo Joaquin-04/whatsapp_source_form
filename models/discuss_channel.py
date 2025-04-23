@@ -18,6 +18,79 @@ class DiscussChannel(models.Model):
     formulario_sent = fields.Boolean(string="Formulario Enviado", default=False,
                                      help="Indica si ya se envió el mensaje interactivo de formulario.")
 
+
+    def _notify_thread(self, message, msg_vals=False, **kwargs):
+        res = super()._notify_thread(message, msg_vals, **kwargs)
+        
+        if self.channel_type == 'whatsapp':
+            # Enviar formulario solo si no se ha enviado
+            if not self.formulario_sent:
+                try:
+                    self._send_whatsapp_template()
+                    self.formulario_sent = True
+                except Exception as e:
+                    _logger.error("Error al enviar formulario: %s", str(e))
+            
+            # Procesar respuesta del usuario
+            if msg_vals and 'body' in msg_vals:
+                user_response = msg_vals['body'].strip().lower()
+                self._process_text_response(user_response)
+        
+        return res
+    
+    def _send_whatsapp_template(self):
+        try:
+            # Mensaje simple con emojis e instrucciones
+            message_body = """
+            ¿Dónde nos encontraste? Responde con:
+            
+            🪧 1 para Landing
+            📢 2 para Google Ads
+            📱 3 para Facebook/Instagram
+            
+            O escribe el nombre de la fuente (ej: "Facebook").
+            """
+            
+            # Crear mail.message
+            mail_message = self.env['mail.message'].create({
+                'model': 'discuss.channel',
+                'res_id': self.id,
+                'body': message_body,
+            })
+            
+            # Formatear número con '+'
+            whatsapp_number = f"+{self.whatsapp_number}" if not self.whatsapp_number.startswith("+") else self.whatsapp_number
+            
+            # Crear whatsapp.message
+            whatsapp_msg = self.env['whatsapp.message'].create({
+                'mobile_number': whatsapp_number,
+                'wa_account_id': self.wa_account_id.id,
+                'message_type': 'outbound',
+                'mail_message_id': mail_message.id,
+                'body': message_body
+            })
+            
+            # Enviar mensaje de texto
+            wa_api = WhatsAppApi(self.wa_account_id)
+            msg_uid = wa_api._send_whatsapp(
+                number=whatsapp_number,
+                message_type='text',
+                send_vals={'body': message_body}  # Payload simple
+            )
+            
+            if msg_uid:
+                whatsapp_msg.write({'state': 'sent', 'msg_uid': msg_uid})
+                _logger.info("Mensaje de texto enviado con UID: %s", msg_uid)
+            else:
+                _logger.warning("No se recibió UID del mensaje de texto.")
+            
+            self.formulario_sent = True
+        
+        except Exception as e:
+            _logger.error("Error enviando mensaje de texto: %s", str(e))
+            raise
+
+    """
     def _notify_thread(self, message, msg_vals=False, **kwargs):
         _logger.info("Entrando en _notify_thread con message: %s, msg_vals: %s, kwargs: %s",
                      message, msg_vals, kwargs)
@@ -105,7 +178,7 @@ class DiscussChannel(models.Model):
             raise    
     
     def _process_button_response(self, button_id):
-        """ Mapea la respuesta del botón al campo source_option. """
+        # Mapea la respuesta del botón al campo source_option. 
         mapping = {
             'google': 'google',
             'social': 'social',
@@ -115,12 +188,12 @@ class DiscussChannel(models.Model):
         _logger.info("source_option actualizado a: %s", self.source_option)
 
     def _prepare_interactive_message(self, body, buttons):
-        """
-        Prepara el payload para enviar un mensaje interactivo con botones (respuesta rápida) según WhatsApp Cloud API.
-        :param body: Texto del cuerpo del mensaje.
-        :param buttons: Lista de diccionarios con 'title' y 'payload'.
-        :return: Diccionario con la estructura esperada por la API.
-        """
+        
+        #Prepara el payload para enviar un mensaje interactivo con botones (respuesta rápida) según WhatsApp Cloud API.
+        #:param body: Texto del cuerpo del mensaje.
+        #:param buttons: Lista de diccionarios con 'title' y 'payload'.
+        #:return: Diccionario con la estructura esperada por la API.
+        
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
@@ -144,3 +217,12 @@ class DiscussChannel(models.Model):
             }
         }
         return payload
+
+
+        
+        
+    """
+    
+
+
+
