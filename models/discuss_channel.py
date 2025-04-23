@@ -9,15 +9,56 @@ _logger = logging.getLogger(__name__)
 class DiscussChannel(models.Model):
     _inherit = 'discuss.channel'
 
-    source_option = fields.Selection([
-        ('google', 'Google o YouTube'),
-        ('social', 'Facebook o Instagram'),
-        ('landing', 'Landing Page'),
-    ], string="Fuente del Lead")
+
+    # Eliminar el campo Selection y reemplazar por Many2one a utm.source
+    source_id = fields.Many2one(
+        'utm.source', 
+        string="Fuente del Lead",
+        help="Fuente UTM asignada según la respuesta del cliente."
+    )
     
     formulario_sent = fields.Boolean(string="Formulario Enviado", default=False,
                                      help="Indica si ya se envió el mensaje interactivo de formulario.")
 
+
+    def _process_text_response(self, user_response):
+        # Mapeo de keywords a nombres de utm.source
+        keyword_mapping = {
+            '1': 'Landing',
+            'landing': 'Landing',
+            '🪧': 'Landing',
+            '2': 'Google Ads',
+            'google': 'Google Ads',
+            'ads': 'Google Ads',
+            '📢': 'Google Ads',
+            '3': 'Facebook',
+            'facebook': 'Facebook',
+            'Facebook': 'Facebook',
+            'fb': 'Facebook',
+            'FB': 'Facebook',
+            'Fb': 'Facebook',
+            '📱': 'Facebook',
+            'instagram': 'Instagram',
+            'Instagram': 'Instagram',
+            'ig': 'Instagram',
+            'Ig': 'Instagram',
+            'IG': 'Instagram',
+        }
+        
+        # Buscar coincidencia en los keywords
+        source_name = 'WhatsApp'  # Valor por defecto
+        for key, value in keyword_mapping.items():
+            if key in user_response:
+                source_name = value
+                break
+        
+        # Buscar el registro utm.source
+        utm_source = self.env['utm.source'].search([('name', 'ilike', source_name)], limit=1)
+        if utm_source:
+            self.source_id = utm_source.id
+            _logger.info("Fuente UTM asignada: %s", source_name)
+        else:
+            _logger.warning("No se encontró utm.source para: %s", source_name)
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
         res = super()._notify_thread(message, msg_vals, **kwargs)
