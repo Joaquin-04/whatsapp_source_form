@@ -22,8 +22,9 @@ class DiscussChannel(models.Model):
 
 
     def _process_text_response(self, user_response):
-        _logger.warning("*",*100)
+        _logger.warning("*"*100)
         _logger.warning(f"_process_text_response" )
+        _logger.warning("Estado de formulario_sent: %s", self.formulario_sent)
         _logger.warning(f"user_response: {user_response}")
         # Mapeo de keywords a nombres de utm.source
         keyword_mapping = {
@@ -49,7 +50,7 @@ class DiscussChannel(models.Model):
         }
         
         # Buscar coincidencia en los keywords
-        source_name = 'WhatsApp'  # Valor por defecto
+        source_name = 'whatsApp'  # Valor por defecto
         for key, value in keyword_mapping.items():
             if key in user_response:
                 source_name = value
@@ -65,6 +66,10 @@ class DiscussChannel(models.Model):
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
         res = super()._notify_thread(message, msg_vals, **kwargs)
+        _logger.warning("*"*100)
+        _logger.warning(f"_notify_thread" )
+        _logger.warning("Estado de formulario_sent: %s", self.formulario_sent)
+        
         
         if self.channel_type == 'whatsapp':
             # Enviar formulario solo si no se ha enviado
@@ -83,6 +88,9 @@ class DiscussChannel(models.Model):
         return res
     
     def _send_whatsapp_template(self):
+        _logger.warning("*"*100)
+        _logger.warning(f"_send_whatsapp_template" )
+        _logger.warning("Estado de formulario_sent: %s", self.formulario_sent)
         try:
             # Mensaje simple con emojis e instrucciones
             message_body = """
